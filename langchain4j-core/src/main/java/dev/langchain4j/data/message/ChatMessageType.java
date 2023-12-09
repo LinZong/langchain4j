@@ -17,7 +17,7 @@ public enum ChatMessageType {
             case USER:
                 return UserMessage.class;
             case USER_MULTIMODAL:
-                return MultiModalUserChatMessage.class;
+                return MultiModalUserMessage.class;
             case AI:
                 return AiMessage.class;
             case TOOL_EXECUTION_RESULT:

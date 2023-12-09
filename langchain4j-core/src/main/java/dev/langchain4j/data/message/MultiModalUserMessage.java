@@ -6,14 +6,14 @@ import java.util.Objects;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
-public class MultiModalUserChatMessage extends MultiModalChatMessage {
+public class MultiModalUserMessage extends MultiModalChatMessage {
     private final String name;
 
-    public MultiModalUserChatMessage(String text, List<String> imageUrls) {
+    public MultiModalUserMessage(String text, List<String> imageUrls) {
         this(null, text, imageUrls);
     }
 
-    public MultiModalUserChatMessage(String name, String text, List<String> imageUrls) {
+    public MultiModalUserMessage(String name, String text, List<String> imageUrls) {
         super(text, imageUrls);
         this.name = name;
     }
@@ -30,9 +30,9 @@ public class MultiModalUserChatMessage extends MultiModalChatMessage {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof MultiModalUserChatMessage)) return false;
+        if (!(o instanceof MultiModalUserMessage)) return false;
         if (!super.equals(o)) return false;
-        MultiModalUserChatMessage that = (MultiModalUserChatMessage) o;
+        MultiModalUserMessage that = (MultiModalUserMessage) o;
         return Objects.equals(name, that.name);
     }
 
@@ -42,11 +42,11 @@ public class MultiModalUserChatMessage extends MultiModalChatMessage {
     }
 
 
-    public static MultiModalUserChatMessage from(String text, List<String> imageUrls) {
-        return new MultiModalUserChatMessage(ensureNotBlank(text, "text"), ensureNotEmpty(imageUrls, "imageUrls"));
+    public static MultiModalUserMessage from(String text, List<String> imageUrls) {
+        return new MultiModalUserMessage(ensureNotBlank(text, "text"), ensureNotEmpty(imageUrls, "imageUrls"));
     }
 
-    public static MultiModalUserChatMessage from(String name, String text, List<String> imageUrls) {
-        return new MultiModalUserChatMessage(name, ensureNotBlank(text, "text"), ensureNotEmpty(imageUrls, "imageUrls"));
+    public static MultiModalUserMessage from(String name, String text, List<String> imageUrls) {
+        return new MultiModalUserMessage(name, ensureNotBlank(text, "text"), ensureNotEmpty(imageUrls, "imageUrls"));
     }
 }
