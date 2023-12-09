@@ -25,6 +25,15 @@ public class ValidationUtils {
         return collection;
     }
 
+    public static <T extends Map<?, ?>> T ensureNotEmpty(T collection, String name) {
+        if (collection == null || collection.isEmpty()) {
+            throw illegalArgument("%s cannot be null or empty", name);
+        }
+
+        return collection;
+    }
+
+
     public static String ensureNotBlank(String string, String name) {
         if (string == null || string.trim().isEmpty()) {
             throw illegalArgument("%s cannot be null or blank", name);
