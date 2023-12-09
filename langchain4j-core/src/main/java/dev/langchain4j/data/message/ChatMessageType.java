@@ -6,6 +6,7 @@ public enum ChatMessageType {
 
     SYSTEM,
     USER,
+    USER_MULTIMODAL,
     AI,
     TOOL_EXECUTION_RESULT;
 
@@ -15,6 +16,8 @@ public enum ChatMessageType {
                 return SystemMessage.class;
             case USER:
                 return UserMessage.class;
+            case USER_MULTIMODAL:
+                return MultiModalUserChatMessage.class;
             case AI:
                 return AiMessage.class;
             case TOOL_EXECUTION_RESULT:

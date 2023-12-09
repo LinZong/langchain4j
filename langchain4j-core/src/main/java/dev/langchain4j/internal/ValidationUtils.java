@@ -1,6 +1,9 @@
 package dev.langchain4j.internal;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 
@@ -58,5 +61,15 @@ public class ValidationUtils {
         }
 
         return i;
+    }
+
+
+    public static <K, V> Map<K, V> ensureContainKeys(Map<K, V> map, Set<K> expectedKeys) {
+        LinkedHashSet<K> clone = new LinkedHashSet<>(expectedKeys);
+        clone.removeAll(map.keySet());
+        if (!clone.isEmpty()) {
+            throw illegalArgument("Must contain key(s): %s in map. Missing key(s): %s.", expectedKeys, clone);
+        }
+        return map;
     }
 }
