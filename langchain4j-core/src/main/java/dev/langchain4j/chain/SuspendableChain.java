@@ -53,20 +53,20 @@ public abstract class SuspendableChain<Input, Output, State extends Serializable
      * Called from implementation of {@link SuspendableChain} when it is eligible to be suspended, with generated payload.
      *
      * @param payload payload generated from chain component.
-     * @return a signal for suspending event. Should be thrown immediately, a.k.a: {@code throw suspend(payload);}.
+     * @return a signal for suspending event. Should be thrown immediately, a.k.a: {@code throw suspendWithPayload(payload);}.
      */
     protected ChainSuspendingException suspendWithPayload(Object payload) {
-        return new ChainSuspendingException((Class<? extends SuspendableChain<?, ?, ?>>) getClass(), onSuspend(payload), payload);
+        return new ChainSuspendingException((Class<? extends SuspendableChain<?, ?, ?>>) getClass(), onSuspend(), payload);
     }
 
     /**
      * Called from implementation of {@link SuspendableChain} when it is handling suspending event propagated from chain's hierarchy, with generated payload.
      *
      * @param payload payload generated from chain component.
-     * @return a signal for suspending event. Should be thrown immediately, a.k.a: {@code throw suspend(cause);}.
+     * @return a signal for suspending event. Should be thrown immediately, a.k.a: {@code throw suspendWithPayload(payload, cause);}.
      */
     protected ChainSuspendingException suspendWithPayload(Object payload, ChainSuspendingException cause) {
-        return new ChainSuspendingException((Class<? extends SuspendableChain<?, ?, ?>>) getClass(), onSuspend(payload), payload, cause);
+        return new ChainSuspendingException((Class<? extends SuspendableChain<?, ?, ?>>) getClass(), onSuspend(), payload, cause);
     }
 
     /**
