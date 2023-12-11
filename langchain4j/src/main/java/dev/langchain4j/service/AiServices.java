@@ -1,7 +1,7 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.DefaultToolExecutor;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -18,14 +18,12 @@ import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -309,6 +307,19 @@ public abstract class AiServices<T> {
         return this;
     }
 
+
+    /**
+     * Configures an {@link ExecutorService} for async operations.
+     * Default value: {@link Executors#newCachedThreadPool()}.
+     *
+     * @param executorService The executor service to be used for performing async operations.
+     * @return builder
+     */
+    public AiServices<T> serviceExecutor(ExecutorService executorService) {
+        context.serviceExecutor = executorService;
+        return this;
+    }
+
     /**
      * Constructs and returns the AI Service.
      *
@@ -324,19 +335,29 @@ public abstract class AiServices<T> {
         if (context.toolSpecifications != null && !context.hasChatMemory()) {
             throw illegalConfiguration(
                     "Please set up chatMemory or chatMemoryProvider in order to use tools. "
-                            + "A ChatMemory that can hold at least 3 messages is required for the tools to work properly. "
-                            + "While the LLM can technically execute a tool without chat memory, if it only receives the " +
-                            "result of the tool's execution without the initial message from the user, it won't interpret " +
-                            "the result properly."
+                    + "A ChatMemory that can hold at least 3 messages is required for the tools to work properly. "
+                    + "While the LLM can technically execute a tool without chat memory, if it only receives the " +
+                    "result of the tool's execution without the initial message from the user, it won't interpret " +
+                    "the result properly."
             );
+        }
+    }
+
+
+    /**
+     * Assign default values for current {@link AiServiceContext}.
+     */
+    protected void performDefaultValueAssignments() {
+        if (context.serviceExecutor == null) {
+            context.serviceExecutor = Executors.newCachedThreadPool();
         }
     }
 
     public static List<ChatMessage> removeToolMessages(List<ChatMessage> messages) {
         return messages.stream()
-                .filter(it -> !(it instanceof ToolExecutionResultMessage))
-                .filter(it -> !(it instanceof AiMessage && ((AiMessage) it).toolExecutionRequest() != null))
-                .collect(toList());
+                       .filter(it -> !(it instanceof ToolExecutionResultMessage))
+                       .filter(it -> !(it instanceof AiMessage && ((AiMessage) it).toolExecutionRequest() != null))
+                       .collect(toList());
     }
 
     public static void verifyModerationIfNeeded(Future<Moderation> moderationFuture) {

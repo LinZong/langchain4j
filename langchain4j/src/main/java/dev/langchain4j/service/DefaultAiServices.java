@@ -1,12 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
-import static java.util.Collections.singletonMap;
-import static java.util.stream.Collectors.joining;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.AiMessage;
@@ -20,21 +13,20 @@ import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.Future;
+
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
+import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.joining;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
@@ -68,123 +60,125 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         performBasicValidation();
 
+        performDefaultValueAssignments();
+
         for (Method method : context.aiServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
                 throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
-                        "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
+                                           "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
         }
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
                 new Class<?>[]{context.aiServiceClass},
-                new InvocationHandler() {
-
-                    private final ExecutorService executor = Executors.newCachedThreadPool();
-
-                    @Override
-                    public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
-
-                        if (method.getDeclaringClass() == Object.class) {
-                            // methods like equals(), hashCode() and toString() should not be handled by this proxy
-                            return method.invoke(this, args);
-                        }
-
-                        validateParameters(method);
-
-                        Optional<ChatMessage> systemMessage = prepareSystemMessage(method, args);
-                        ChatMessage userMessage = prepareUserMessage(method, args);
-
-                        if (context.retriever != null) { // TODO extract method/class
-                            List<TextSegment> relevant = context.retriever.findRelevant(userMessage.text());
-
-                            if (relevant == null || relevant.isEmpty()) {
-                                log.debug("No relevant information was found");
-                            } else {
-                                String relevantConcatenated = relevant.stream()
-                                        .map(TextSegment::text)
-                                        .collect(joining("\n\n"));
-
-                                log.debug("Retrieved relevant information:\n" + relevantConcatenated + "\n");
-
-                                userMessage = userMessage(userMessage.text()
-                                        + "\n\nHere is some information that might be useful for answering:\n\n"
-                                        + relevantConcatenated);
-                            }
-                        }
-
-                        Object memoryId = memoryId(method, args).orElse(DEFAULT);
-
-                        if (context.hasChatMemory()) {
-                            ChatMemory chatMemory = context.chatMemory(memoryId);
-                            systemMessage.ifPresent(chatMemory::add);
-                            chatMemory.add(userMessage);
-                        }
-
-                        List<ChatMessage> messages;
-                        if (context.hasChatMemory()) {
-                            messages = context.chatMemory(memoryId).messages();
-                        } else {
-                            messages = new ArrayList<>();
-                            systemMessage.ifPresent(messages::add);
-                            messages.add(userMessage);
-                        }
-
-                        Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
-
-                        if (method.getReturnType() == TokenStream.class) {
-                            return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
-                        }
-
-                        Response<AiMessage> response = context.toolSpecifications != null ?
-                                context.chatModel.generate(messages, context.toolSpecifications) :
-                                context.chatModel.generate(messages);
-
-                        verifyModerationIfNeeded(moderationFuture);
-
-                        ToolExecutionRequest toolExecutionRequest;
-                        while (true) { // TODO limit number of cycles
-
-                            if (context.hasChatMemory()) {
-                                context.chatMemory(memoryId).add(response.content());
-                            }
-
-                            toolExecutionRequest = response.content().toolExecutionRequest();
-                            if (toolExecutionRequest == null) {
-                                break;
-                            }
-
-                            ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
-                            String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                            ToolExecutionResultMessage toolExecutionResultMessage
-                                    = toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
-
-                            ChatMemory chatMemory = context.chatMemory(memoryId);
-                            chatMemory.add(toolExecutionResultMessage);
-
-                            response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
-                        }
-
-                        return ServiceOutputParser.parse(response, method.getReturnType());
-                    }
-
-                    private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
-                        if (method.isAnnotationPresent(Moderate.class)) {
-                            return executor.submit(() -> {
-                                List<ChatMessage> messagesToModerate = removeToolMessages(messages);
-                                return context.moderationModel.moderate(messagesToModerate).content();
-                            });
-                        }
-                        return null;
-                    }
-
-
-                });
+                new ServiceMethodHandler()
+        );
 
         return (T) proxyInstance;
     }
 
-    private Optional<ChatMessage> prepareSystemMessage(Method method, Object[] args) {
+    private class ServiceMethodHandler implements InvocationHandler {
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
+
+            if (method.getDeclaringClass() == Object.class) {
+                // methods like equals(), hashCode() and toString() should not be handled by this proxy
+                return method.invoke(this, args);
+            }
+
+            validateParameters(method);
+
+            Optional<ChatMessage> systemMessage = prepareSystemMessage(method, args);
+            ChatMessage userMessage = prepareUserMessage(method, args);
+
+            if (context.retriever != null) { // TODO extract method/class
+                List<TextSegment> relevant = context.retriever.findRelevant(userMessage.text());
+
+                if (relevant == null || relevant.isEmpty()) {
+                    log.debug("No relevant information was found");
+                } else {
+                    String relevantConcatenated = relevant.stream()
+                                                          .map(TextSegment::text)
+                                                          .collect(joining("\n\n"));
+
+                    log.debug("Retrieved relevant information:\n" + relevantConcatenated + "\n");
+
+                    userMessage = userMessage(userMessage.text()
+                                              + "\n\nHere is some information that might be useful for answering:\n\n"
+                                              + relevantConcatenated);
+                }
+            }
+
+            Object memoryId = memoryId(method, args).orElse(DEFAULT);
+
+            if (context.hasChatMemory()) {
+                ChatMemory chatMemory = context.chatMemory(memoryId);
+                systemMessage.ifPresent(chatMemory::add);
+                chatMemory.add(userMessage);
+            }
+
+            List<ChatMessage> messages;
+            if (context.hasChatMemory()) {
+                messages = context.chatMemory(memoryId).messages();
+            } else {
+                messages = new ArrayList<>();
+                systemMessage.ifPresent(messages::add);
+                messages.add(userMessage);
+            }
+
+            Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
+
+            if (method.getReturnType() == TokenStream.class) {
+                return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
+            }
+
+            Response<AiMessage> response = context.toolSpecifications != null ?
+                                           context.chatModel.generate(messages, context.toolSpecifications) :
+                                           context.chatModel.generate(messages);
+
+            verifyModerationIfNeeded(moderationFuture);
+
+            ToolExecutionRequest toolExecutionRequest;
+            while (true) { // TODO limit number of cycles
+
+                if (context.hasChatMemory()) {
+                    context.chatMemory(memoryId).add(response.content());
+                }
+
+                toolExecutionRequest = response.content().toolExecutionRequest();
+                if (toolExecutionRequest == null) {
+                    break;
+                }
+
+                ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                ToolExecutionResultMessage toolExecutionResultMessage
+                        = toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
+
+                ChatMemory chatMemory = context.chatMemory(memoryId);
+                chatMemory.add(toolExecutionResultMessage);
+
+                response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
+            }
+
+            return ServiceOutputParser.parse(response, method.getReturnType());
+        }
+
+        private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
+            if (method.isAnnotationPresent(Moderate.class)) {
+                return context.serviceExecutor.submit(() -> {
+                    List<ChatMessage> messagesToModerate = removeToolMessages(messages);
+                    return context.moderationModel.moderate(messagesToModerate).content();
+                });
+            }
+            return null;
+        }
+    }
+
+
+    private static Optional<ChatMessage> prepareSystemMessage(Method method, Object[] args) {
 
         Parameter[] parameters = method.getParameters();
         Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
@@ -219,7 +213,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             if (userMessageTemplate.contains("{{it}}")) {
                 if (parameters.length != 1) {
                     throw illegalConfiguration("Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
-                            "Please ensure that methods using the {{it}} placeholder have exactly one parameter.");
+                                               "Please ensure that methods using the {{it}} placeholder have exactly one parameter.");
                 }
 
                 variables = singletonMap("it", toString(args[0]));
@@ -243,9 +237,9 @@ class DefaultAiServices<T> extends AiServices<T> {
             return userMessage(userName, toString(args[0]) + outputFormatInstructions);
         }
 
-        throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
+        throw illegalConfiguration(
+                "For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
     }
-
 
 
     private Optional<Object> memoryId(Method method, Object[] args) {
@@ -255,14 +249,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                 Object memoryId = args[i];
                 if (memoryId == null) {
                     throw illegalArgument("The value of parameter %s annotated with @MemoryId in method %s must not be null",
-                            parameters[i].getName(), method.getName());
+                                          parameters[i].getName(), method.getName());
                 }
                 return Optional.of(memoryId);
             }
         }
         return Optional.empty();
     }
-
 
 
     private static String getUserName(Parameter[] parameters, Object[] args) {

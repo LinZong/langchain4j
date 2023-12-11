@@ -10,12 +10,8 @@ import java.util.List;
  * on every interaction with the language model.
  * {@link ChatMemory} helps with keeping track of the conversation and ensuring that messages fit within language model's context window.
  */
-public interface ChatMemory {
+public interface ChatMemory extends Memory {
 
-    /**
-     * @return The ID of the {@link ChatMemory}.
-     */
-    Object id();
 
     /**
      * Adds a message to the chat memory.
@@ -32,9 +28,4 @@ public interface ChatMemory {
      * @return A list of {@link ChatMessage} objects that represent the current state of the chat memory.
      */
     List<ChatMessage> messages();
-
-    /**
-     * Clears the chat memory.
-     */
-    void clear();
 }

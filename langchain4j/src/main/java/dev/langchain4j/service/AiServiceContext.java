@@ -12,6 +12,7 @@ import dev.langchain4j.retriever.Retriever;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 public class AiServiceContext {
 
@@ -29,6 +30,8 @@ public class AiServiceContext {
     public Map<String, ToolExecutor> toolExecutors;
 
     public Retriever<TextSegment> retriever;
+
+    public ExecutorService serviceExecutor;
 
     public AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
