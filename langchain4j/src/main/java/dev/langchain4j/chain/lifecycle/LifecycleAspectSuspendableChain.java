@@ -27,15 +27,15 @@ public class LifecycleAspectSuspendableChain<Input, Output, State extends Serial
     @Override
     public Output execute(Input input) {
         try {
-            safeExecuteListener(listener -> listener.beforeExecute(input));
+            safeExecuteListeners(listener -> listener.beforeExecute(input));
             Output output = peer.execute(input);
-            safeExecuteListener(listener -> listener.afterExecute(input, output));
+            safeExecuteListeners(listener -> listener.afterExecute(input, output));
             return output;
         } catch (ChainSuspendingException suspend) {
-            safeExecuteListener(listener -> listener.afterSuspend(suspend));
+            safeExecuteListeners(listener -> listener.afterSuspend(suspend));
             throw suspend;
         } catch (Throwable t) {
-            safeExecuteListener(listener -> listener.executeError(input, t));
+            safeExecuteListeners(listener -> listener.executeError(input, t));
             throw t;
         }
     }
@@ -44,11 +44,11 @@ public class LifecycleAspectSuspendableChain<Input, Output, State extends Serial
     @Override
     public void resume(State state) {
         try {
-            safeExecuteListener(listener -> listener.beforeResume(state));
+            safeExecuteListeners(listener -> listener.beforeResume(state));
             peer.resume(state);
-            safeExecuteListener(listener -> listener.afterResume(state));
+            safeExecuteListeners(listener -> listener.afterResume(state));
         } catch (Throwable t) {
-            safeExecuteListener(listener -> listener.resumeError(state, t));
+            safeExecuteListeners(listener -> listener.resumeError(state, t));
             throw t;
         }
     }
@@ -63,7 +63,7 @@ public class LifecycleAspectSuspendableChain<Input, Output, State extends Serial
         throw new UnsupportedOperationException("Not supported for LifecycleAspectSuspendableChain.");
     }
 
-    protected void safeExecuteListener(Consumer<SuspendableChainLifecycleListener<Input, Output, State>> executor) {
+    protected void safeExecuteListeners(Consumer<SuspendableChainLifecycleListener<Input, Output, State>> executor) {
         for (SuspendableChainLifecycleListener<Input, Output, State> listener : listeners) {
             try {
                 executor.accept(listener);

@@ -23,17 +23,17 @@ public class LifecycleAspectChain<Input, Output> implements Chain<Input, Output>
     @Override
     public Output execute(Input input) {
         try {
-            safeExecuteListener(listener -> listener.beforeExecute(input));
+            safeExecuteListeners(listener -> listener.beforeExecute(input));
             Output output = peer.execute(input);
-            safeExecuteListener(listener -> listener.afterExecute(input, output));
+            safeExecuteListeners(listener -> listener.afterExecute(input, output));
             return output;
         } catch (Throwable t) {
-            safeExecuteListener(listener -> listener.executeError(input, t));
+            safeExecuteListeners(listener -> listener.executeError(input, t));
             throw t;
         }
     }
 
-    protected void safeExecuteListener(Consumer<ChainLifecycleListener<Input, Output>> executor) {
+    protected void safeExecuteListeners(Consumer<ChainLifecycleListener<Input, Output>> executor) {
         for (ChainLifecycleListener<Input, Output> listener : listeners) {
             try {
                 executor.accept(listener);
