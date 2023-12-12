@@ -11,6 +11,15 @@ import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+/**
+ * Chain for taking aspect on execution lifecycle of peer suspendable chain.
+ *
+ * @param <Input>  Generic type of chain's input.
+ * @param <Output> Generic type of chain's output.
+ * @param <State>  Generic type of chain's intermediate state object.
+ * @see SuspendableChainLifecycleListener for implementation of lifecycle listener.
+ */
+
 public class LifecycleAspectSuspendableChain<Input, Output, State extends Serializable> extends SuspendableChain<Input, Output, State> {
 
     private final SuspendableChain<Input, Output, State> peer;

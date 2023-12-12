@@ -9,6 +9,13 @@ import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+/**
+ * Chain for taking aspect on execution lifecycle of peer chain.
+ *
+ * @param <Input>  Generic type of chain's input.
+ * @param <Output> Generic type of chain's output.
+ * @see ChainLifecycleListener for implementation of lifecycle listener.
+ */
 public class LifecycleAspectChain<Input, Output> implements Chain<Input, Output> {
 
     private final Chain<Input, Output> peer;
