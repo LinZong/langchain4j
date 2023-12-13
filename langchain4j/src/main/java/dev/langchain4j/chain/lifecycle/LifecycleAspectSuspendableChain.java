@@ -28,7 +28,7 @@ public class LifecycleAspectSuspendableChain<Input, Output, State extends Serial
 
 
     public LifecycleAspectSuspendableChain(SuspendableChain<Input, Output, State> peer,
-                                           List<SuspendableChainLifecycleListener<Input, Output, State>> listeners) {
+                                           List<? extends SuspendableChainLifecycleListener<Input, Output, State>> listeners) {
         this.peer = ensureNotNull(peer, "peer");
         this.listeners.addAll(ensureNotNull(listeners, "listeners"));
     }
