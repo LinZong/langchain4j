@@ -2,6 +2,8 @@ package dev.langchain4j.chain.lifecycle;
 
 import dev.langchain4j.chain.Chain;
 import dev.langchain4j.chain.lifecycle.listener.ChainLifecycleListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +19,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * @see ChainLifecycleListener for implementation of lifecycle listener.
  */
 public class LifecycleAspectChain<Input, Output> implements Chain<Input, Output> {
+    private static final Logger log = LoggerFactory.getLogger(LifecycleAspectChain.class);
 
     private final Chain<Input, Output> peer;
 
@@ -45,7 +48,7 @@ public class LifecycleAspectChain<Input, Output> implements Chain<Input, Output>
             try {
                 executor.accept(listener);
             } catch (Throwable t) {
-                // TODO log for exception.
+                log.error("Failed to execute listener: {}", listener, t);
             }
         }
     }

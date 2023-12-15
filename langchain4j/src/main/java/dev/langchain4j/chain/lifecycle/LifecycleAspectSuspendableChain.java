@@ -3,6 +3,8 @@ package dev.langchain4j.chain.lifecycle;
 import dev.langchain4j.chain.ChainSuspendingException;
 import dev.langchain4j.chain.SuspendableChain;
 import dev.langchain4j.chain.lifecycle.listener.SuspendableChainLifecycleListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -21,6 +23,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 
 public class LifecycleAspectSuspendableChain<Input, Output, State extends Serializable> extends SuspendableChain<Input, Output, State> {
+
+    private static final Logger log = LoggerFactory.getLogger(LifecycleAspectSuspendableChain.class);
 
     private final SuspendableChain<Input, Output, State> peer;
 
@@ -77,7 +81,7 @@ public class LifecycleAspectSuspendableChain<Input, Output, State extends Serial
             try {
                 executor.accept(listener);
             } catch (Throwable t) {
-                // TODO log for exception.
+                log.error("Failed to execute listener: {}", listener, t);
             }
         }
     }
